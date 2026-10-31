@@ -609,7 +609,7 @@ function selectOption(q, k){
   if(q.s==="multi"){
     const cur = state.ans[state.cur] || "";
     state.ans[state.cur] = cur.includes(k) ? cur.replace(k,"") : (cur+k);
-    renderOptions(q);
+    renderOptions(q); renderNav(q);
   } else {
     state.ans[state.cur] = k;
     judge(q);
@@ -663,7 +663,7 @@ function renderFeedback(q){
 function renderNav(q){
   const nav = $("qNav"); nav.innerHTML = "";
   const judged = state.res[state.cur] !== undefined;
-  const answered = state.ans[state.cur] !== undefined;
+  const answered = (state.ans[state.cur] || "") !== "";
   const last = state.cur >= state.list.length-1;
   if(!state.exam){
     const confirm = document.createElement("button");
