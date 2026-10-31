@@ -172,6 +172,22 @@ button{font:inherit; cursor:pointer; border:0; background:none; color:inherit}
 .wrongbook-card .cnt b{font-size:24px; font-weight:800; color:var(--err)}
 .wrongbook-card .cnt span{font-size:13px; color:var(--ink2)}
 .empty{background:var(--card); border:1px dashed #C9DCF0; border-radius:var(--radius); padding:36px 20px; text-align:center; color:var(--ink2); font-size:15px}
+.bk-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px 16px; margin-top:16px}
+.bk-card .bk-tip{font-size:12.5px; color:var(--ink2); line-height:1.7; margin-bottom:10px}
+.bk-btns{display:flex; gap:10px}
+.bk-btn{flex:1; padding:11px 8px; border-radius:12px; font-weight:700; font-size:14px; background:#E8F2FD; color:#1D5FA8}
+.bk-btn.amber{background:linear-gradient(135deg,#FBBF24,#F59E0B); color:#7A4500}
+.storage-warn{display:none; margin-top:12px; background:#FDECEC; border:1px solid #F5C2C2; color:#C81E1E; border-radius:12px; padding:10px 14px; font-size:13px; line-height:1.7}
+.storage-warn.show{display:block}
+.bk-modal{position:fixed; inset:0; z-index:80; background:rgba(8,26,51,.55); display:flex; align-items:center; justify-content:center; padding:20px}
+.bk-modal .bk-box{background:#fff; border-radius:18px; max-width:480px; width:100%; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.bk-modal h3{font-size:17px; font-weight:800; margin-bottom:6px}
+.bk-modal p{font-size:13px; color:var(--ink2); margin-bottom:12px; line-height:1.7}
+.bk-modal textarea{width:100%; min-height:130px; max-height:40vh; border:1.6px solid var(--line); border-radius:12px; padding:10px 12px; font-size:13px; line-height:1.6; font-family:ui-monospace,Consolas,Menlo,monospace; resize:vertical; background:#F8FBFE}
+.bk-modal .bk-acts{display:flex; gap:10px; margin-top:12px}
+.bk-modal .bk-acts button{flex:1; padding:11px 8px; border-radius:12px; font-weight:700; font-size:14px}
+.bk-ok{background:linear-gradient(135deg,var(--sky2),var(--sky)); color:#fff}
+.bk-cancel{background:#E8F2FD; color:#1D5FA8}
 
 /* ===== toast ===== */
 #toast{position:fixed; left:50%; bottom:96px; transform:translateX(-50%) translateY(20px); background:#13233F; color:#fff; padding:11px 20px; border-radius:12px; font-size:14px; opacity:0; pointer-events:none; transition:all .3s; z-index:99; max-width:86vw; text-align:center}
@@ -222,6 +238,14 @@ button{font:inherit; cursor:pointer; border:0; background:none; color:inherit}
       <div class="stat-card"><b class="num" id="st-done">0</b><span>已练题数</span></div>
       <div class="stat-card"><b class="num" id="st-rate">0%</b><span>总正确率</span></div>
       <div class="stat-card"><b class="num" id="st-wrong">0</b><span>错题数</span></div>
+    </div>
+    <div class="storage-warn" id="storageWarn">当前浏览器无法保存练习进度（可能处于隐私模式或微信内置浏览器缓存被清理）。建议用系统浏览器打开，或定期使用下方「导出进度」备份。</div>
+    <div class="bk-card">
+      <div class="bk-tip">练习进度保存在本机浏览器中，清理微信/浏览器缓存、更换设备或卸载应用会导致进度丢失。建议定期备份：</div>
+      <div class="bk-btns">
+        <button class="bk-btn amber" onclick="exportProgress()">导出进度备份</button>
+        <button class="bk-btn" onclick="openImportModal()">导入进度恢复</button>
+      </div>
     </div>
 
     <div class="section-title"><h2>选择模式</h2><span class="en">五种训练方式</span></div>
@@ -357,13 +381,82 @@ const SEC_COUNT = {single:400, multi:200, judge:200};
 
 /* ===== 本地存储 ===== */
 const LS_KEY = "uavquiz2026_v1";
+const BK_VER = 1;
+let storageOK = true;
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ storageOK = false; return null; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); return true; }catch(e){ storageOK = false; return false; } }
 const store = loadStore();
 function loadStore(){
-  try{ const d = JSON.parse(localStorage.getItem(LS_KEY)); if(d && typeof d==="object") return d; }catch(e){}
+  const raw = lsGet(LS_KEY);
+  if(raw){ try{ const d = JSON.parse(raw); if(d && typeof d==="object") return d; }catch(e){} }
   return {wrong:{}, answered:0, correct:0};
 }
-function saveStore(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(store)); }catch(e){} }
+function saveStore(){
+  if(!lsSet(LS_KEY, JSON.stringify(store))){
+    toast("进度保存失败：浏览器本地存储不可用，请使用系统浏览器打开，或导出进度备份");
+  }
+  renderStorageWarn();
+}
+function renderStorageWarn(){
+  const w = $("storageWarn");
+  if(w) w.classList.toggle("show", !storageOK);
+}
 function wrongCount(){ return Object.keys(store.wrong).length; }
+
+/* ===== 进度备份 / 恢复 ===== */
+function exportProgress(){
+  const payload = {v: BK_VER, key: LS_KEY, data: store, time: new Date().toISOString()};
+  showBackupModal("export", JSON.stringify(payload));
+}
+function openImportModal(){ showBackupModal("import", ""); }
+function showBackupModal(mode, text){
+  const mask = document.createElement("div");
+  mask.className = "bk-modal";
+  const title = mode==="export" ? "导出进度备份" : "导入进度恢复";
+  const desc = mode==="export"
+    ? "以下为你的练习进度备份文本。长按全选并复制，保存到备忘录、文件传输助手或发给自己的文件，换设备/清理缓存后粘贴即可恢复。"
+    : "粘贴之前导出的备份文本，点击「恢复进度」即可。恢复会覆盖当前进度。";
+  mask.innerHTML =
+    '<div class="bk-box">' +
+    '<h3>' + title + '</h3>' +
+    '<p>' + desc + '</p>' +
+    '<textarea id="bkText" spellcheck="false" placeholder="' + (mode==="export" ? "" : "粘贴备份文本…") + '"></textarea>' +
+    '<div class="bk-acts">' +
+      '<button class="bk-ok" id="bkOk">' + (mode==="export" ? "复制备份文本" : "恢复进度") + '</button>' +
+      '<button class="bk-cancel" id="bkCancel">关闭</button>' +
+    '</div></div>';
+  document.body.appendChild(mask);
+  const ta = mask.querySelector("#bkText");
+  if(mode==="export"){ ta.value = text; ta.readOnly = true; }
+  mask.querySelector("#bkCancel").onclick = ()=>mask.remove();
+  mask.querySelector("#bkOk").onclick = ()=>{
+    if(mode==="export"){
+      ta.select(); ta.setSelectionRange(0, 999999);
+      try{ document.execCommand("copy"); toast("备份文本已复制，请保存好"); }
+      catch(e){ toast("请长按文本框手动复制"); }
+      return;
+    }
+    const ok = importProgress(ta.value);
+    if(ok){ toast("进度恢复成功"); mask.remove(); }
+  };
+}
+function importProgress(text){
+  text = (text||"").trim();
+  if(!text){ toast("备份文本为空"); return false; }
+  let p;
+  try{ p = JSON.parse(text); }catch(e){ toast("备份文本格式错误，请检查是否完整复制"); return false; }
+  if(!p || p.v!==BK_VER || !p.data || typeof p.data!=="object"){
+    toast("备份文本不是有效的进度备份"); return false;
+  }
+  const d = p.data;
+  if(typeof d.answered!=="number" || typeof d.correct!=="number" || typeof d.wrong!=="object" || d.wrong===null){
+    toast("备份内容不完整，恢复失败"); return false;
+  }
+  store.wrong = d.wrong; store.answered = d.answered; store.correct = d.correct;
+  saveStore();
+  renderHomeStats();
+  return true;
+}
 
 /* ===== 状态 ===== */
 const state = {
@@ -776,6 +869,7 @@ function renderHomeStats(){
 }
 function renderHome(){
   renderHomeStats();
+  renderStorageWarn();
 }
 
 /* ===== 错题本 ===== */
