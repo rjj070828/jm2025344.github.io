@@ -462,7 +462,6 @@ function renderQuestion(){
   renderFeedback(q);
   renderNav(q);
   renderSheet();
-  window.scrollTo({top:0, behavior:"smooth"});
   updateBottomBar();
 }
 function renderOptions(q){
@@ -650,7 +649,7 @@ function renderSheet(){
     else if(state.res[i]===0) c.classList.add("err");
     else if(state.ans[i]!==undefined && state.exam) c.classList.add("cur");
     c.title = "第 "+(i+1)+" 题";
-    c.onclick = ()=>{ state.cur = i; renderQuestion(); if(window.innerWidth<900) toast("已跳到第 "+(i+1)+" 题"); };
+    c.onclick = ()=>{ state.cur = i; renderQuestion(); window.scrollTo({top:0, behavior:"smooth"}); if(window.innerWidth<900) toast("已跳到第 "+(i+1)+" 题"); };
     grid.appendChild(c);
   });
 }
@@ -659,11 +658,11 @@ function toggleSheet(){
   if(p) p.scrollIntoView({behavior:"smooth", block:"start"});
 }
 function sheetJumpNext(){
-  for(let i=state.cur+1;i<state.list.length;i++){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); return; } }
+  for(let i=state.cur+1;i<state.list.length;i++){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); window.scrollTo({top:0, behavior:"smooth"}); return; } }
   toast("后面没有未答题");
 }
 function sheetJumpPrev(){
-  for(let i=state.cur-1;i>=0;i--){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); return; } }
+  for(let i=state.cur-1;i>=0;i--){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); window.scrollTo({top:0, behavior:"smooth"}); return; } }
   toast("前面没有未答题");
 }
 
