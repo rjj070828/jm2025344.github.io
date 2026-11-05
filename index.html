@@ -264,13 +264,15 @@ button{font:inherit; cursor:pointer; border:0; background:none; color:inherit}
       </button>
       <button class="mode-card" onclick="startQuiz('exam')">
         <span class="mode-ico ico-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.6 2.2M9 2h6"/></svg></span>
-        <span><h3>考试模拟</h3><p>随机 100 题 · 90 分钟倒计时</p></span>
+        <span><h3>考试模拟</h3><p>赛制 70 题 · 100 分 · 60 分钟</p></span>
       </button>
       <button class="mode-card" onclick="showWrongBook()">
         <span class="mode-ico ico-red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-4.6-9.3-9A5.5 5.5 0 0 1 12 6.3 5.5 5.5 0 0 1 21.3 12C19 16.4 12 21 12 21z"/></svg></span>
         <span><h3>错题重练</h3><p>只练错过的题，直到掌握</p></span>
       </button>
     </div>
+
+    <div class="exam-note">考试模拟按赛程设定：单选 40 题（每题 1 分）＋ 多选 20 题（每题 2 分）＋ 判断 10 题（每题 2 分），满分 100 分，限时 60 分钟。</div>
 
     <div class="section-title" style="margin-top:26px"><h2>题型分布</h2><span class="en">题库构成</span></div>
     <div class="quiz-options">
@@ -342,7 +344,7 @@ button{font:inherit; cursor:pointer; border:0; background:none; color:inherit}
         <circle cx="75" cy="75" r="64" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="10"/>
         <circle id="ringFg" cx="75" cy="75" r="64" fill="none" stroke="#F6A723" stroke-width="10" stroke-linecap="round" stroke-dasharray="402" stroke-dashoffset="402"/>
       </svg>
-      <div class="sc"><b class="num" id="resScore">0</b><span>得分</span></div>
+      <div class="sc"><b class="num" id="resScore">0</b><span id="resFull">得分</span></div>
     </div>
     <h2 id="resTitle">本次练习完成</h2>
     <p id="resSub">共作答 0 题 · 正确 0 题</p>
@@ -353,9 +355,9 @@ button{font:inherit; cursor:pointer; border:0; background:none; color:inherit}
     </div>
   </div>
   <div class="r-stats">
-    <div class="r-card"><b class="num" id="rSingle">0</b><span>单选正确率</span><div class="bar"><i id="rSingleBar"></i></div></div>
-    <div class="r-card"><b class="num" id="rMulti">0</b><span>多选正确率</span><div class="bar"><i id="rMultiBar"></i></div></div>
-    <div class="r-card"><b class="num" id="rJudge">0</b><span>判断正确率</span><div class="bar"><i id="rJudgeBar"></i></div></div>
+    <div class="r-card"><b class="num" id="rSingle">0</b><span id="rSingleLb">单选正确率</span><div class="bar"><i id="rSingleBar"></i></div></div>
+    <div class="r-card"><b class="num" id="rMulti">0</b><span id="rMultiLb">多选正确率</span><div class="bar"><i id="rMultiBar"></i></div></div>
+    <div class="r-card"><b class="num" id="rJudge">0</b><span id="rJudgeLb">判断正确率</span><div class="bar"><i id="rJudgeBar"></i></div></div>
     <div class="r-card"><b class="num" id="rTime">00:00</b><span>用时</span></div>
   </div>
   <div class="wrong-list" id="wrongList"></div>
@@ -490,9 +492,17 @@ function buildList(mode, extra){
   else if(mode==="random"){ arr = shuffle(DB.map(q=>q.id)); }
   else if(mode==="section"){ const s = extra; arr = DB.filter(q=>q.s===s).map(q=>q.id); }
   else if(mode==="wrong"){ arr = shuffle(Object.keys(store.wrong)); }
-  else if(mode==="exam"){ arr = shuffle(DB.map(q=>q.id)).slice(0,100); }
+  else if(mode==="exam"){ arr = examPaper(); }
   return arr;
 }
+/* 赛制试卷：单选 40 + 多选 20 + 判断 10，共 70 题 */
+const EXAM_QUOTA = {single:40, multi:20, judge:10};
+function examPaper(){
+  const pick = (s,n)=>shuffle(DB.filter(q=>q.s===s).map(q=>q.id)).slice(0,n);
+  return pick("single",EXAM_QUOTA.single).concat(pick("multi",EXAM_QUOTA.multi), pick("judge",EXAM_QUOTA.judge));
+}
+/* 每题分值：单选 1 分，多选/判断 2 分 */
+function qWeight(q){ return q.s==="single" ? 1 : 2; }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function byId(id){ return DB.find(q=>q.id===id); }
 
@@ -501,13 +511,13 @@ function startQuiz(mode, extra){
   if(!list.length){ toast("当前没有可练习的题目"); return; }
   state.mode = mode; state.list = list; state.cur = 0;
   state.ans = {}; state.res = {}; state.elapsed = 0; state.exam = (mode==="exam");
-  state.limit = state.exam ? 90*60 : 0;
+  state.limit = state.exam ? 60*60 : 0;
   state.wrongOnly = (mode==="wrong");
   state.timer && clearInterval(state.timer); state.timer = null;
   $("modeLabel").textContent = mode==="exam" ? "考试模拟" : mode==="section" ? "题型专练" : mode==="wrong" ? "错题重练" : mode==="random" ? "随机练习" : "顺序练习";
   showView("quiz");
   renderQuestion();
-  if(state.exam){ startTimer(); toast("考试开始：100 题 · 90 分钟"); }
+  if(state.exam){ startTimer(); toast("考试开始：70 题 · 100 分 · 60 分钟"); }
 }
 function showSectionPick(){
   showSectionPick2();
@@ -798,26 +808,39 @@ function finishQuiz(){
 function renderResult(){
   const total = state.list.length;
   let right = 0, done = 0;
-  const byS = {single:{t:0,r:0}, multi:{t:0,r:0}, judge:{t:0,r:0}};
+  const byS = {single:{t:0,r:0,p:0,m:0}, multi:{t:0,r:0,p:0,m:0}, judge:{t:0,r:0,p:0,m:0}};
   state.list.forEach((id,i)=>{
-    const q = byId(id); byS[q.s].t++;
-    if(state.res[i]===1){ right++; byS[q.s].r++; }
+    const q = byId(id); const w = qWeight(q);
+    byS[q.s].t++; byS[q.s].m += w;
+    if(state.res[i]===1){ right++; byS[q.s].r++; byS[q.s].p += w; }
     if(state.ans[i]!==undefined) done++;
   });
-  const score = total? Math.round(right/total*100):0;
+  const earned = byS.single.p + byS.multi.p + byS.judge.p;
+  const maxP = byS.single.m + byS.multi.m + byS.judge.m;
+  const score = state.exam ? earned : (total? Math.round(right/total*100):0);
+  const ratio = state.exam ? (maxP? earned/maxP : 0) : (total? right/total : 0);
   $("resScore").textContent = score;
+  $("resFull").textContent = state.exam ? "分 / 满分 " + maxP : "得分";
   const ring = $("ringFg");
-  ring.style.strokeDashoffset = (402*(1-right/total)).toFixed(1);
+  ring.style.strokeDashoffset = (402*(1-ratio)).toFixed(1);
   ring.style.transition = "stroke-dashoffset 1s ease";
-  requestAnimationFrame(()=>{ ring.style.strokeDashoffset = (402*(1-right/total)).toFixed(1); });
+  requestAnimationFrame(()=>{ ring.style.strokeDashoffset = (402*(1-ratio)).toFixed(1); });
   $("resTitle").textContent = score>=90?"优秀！" : score>=70?"良好" : score>=60?"及格":"再接再厉";
-  $("resSub").textContent = "共 " + total + " 题 · 作答 " + done + " 题 · 正确 " + right + " 题";
-  $("rSingle").textContent = pct(byS.single);
-  $("rSingleBar").style.width = pct(byS.single);
-  $("rMulti").textContent = pct(byS.multi);
-  $("rMultiBar").style.width = pct(byS.multi);
-  $("rJudge").textContent = pct(byS.judge);
-  $("rJudgeBar").style.width = pct(byS.judge);
+  $("resSub").textContent = state.exam
+    ? "共 " + total + " 题 · 作答 " + done + " 题 · 正确 " + right + " 题 · 卷面 " + earned + "/" + maxP + " 分"
+    : "共 " + total + " 题 · 作答 " + done + " 题 · 正确 " + right + " 题";
+  const showSec = (val, bar, o)=>{
+    $(val).textContent = (state.exam && o.m) ? (o.p + "/" + o.m) : pct(o);
+    $(bar).style.width = (o.m? Math.round(o.p/o.m*100) : 0) + "%";
+  };
+  showSec("rSingle","rSingleBar",byS.single);
+  showSec("rMulti","rMultiBar",byS.multi);
+  showSec("rJudge","rJudgeBar",byS.judge);
+  if(state.exam){
+    $("rSingleLb").textContent = "单选得分（40）";
+    $("rMultiLb").textContent = "多选得分（40）";
+    $("rJudgeLb").textContent = "判断得分（20）";
+  }
   const el = $("timer"); $("rTime").textContent = state.exam ? fmt(state.elapsed) : (state.elapsed? fmt(state.elapsed) : "--:--");
   el.hidden = true;
   $("resAgainBtn").textContent = state.exam ? "再来一场模拟" : "再练一轮";
