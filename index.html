@@ -171,7 +171,7 @@ button{font:inherit; cursor:pointer; border:0; background:none; color:inherit}
 .wrongbook-card .cnt{flex:1}
 .wrongbook-card .cnt b{font-size:24px; font-weight:800; color:var(--err)}
 .wrongbook-card .cnt span{font-size:13px; color:var(--ink2)}
-.empty{background:var(--card); border:1px dashed #C9DCF0; border-radius:var(--radius); padding:36px 20px; text-align:center; color:var(--ink2); font-size:15px}
+.empty{background:var(--card); border:1px dashed #C9DCF0; border-radius:var(--radius); padding:36px 20px; text-align:center; color:var(--ink); font-size:15px}
 .bk-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:14px 16px; margin-top:16px}
 .bk-card .bk-tip{font-size:12.5px; color:var(--ink2); line-height:1.7; margin-bottom:10px}
 .bk-btns{display:flex; gap:10px}
@@ -558,7 +558,7 @@ function renderQuestion(){
   $("totalPos").textContent = state.list.length;
   $("progBar").style.width = ((idx+1)/state.list.length*100).toFixed(1)+"%";
   const tag = $("qTag"); tag.textContent = SEC_NAME[q.s]; tag.className = "q-tag " + SEC_TAG[q.s];
-  $("qNo").textContent = "第 " + q.no + " 题";
+  $("qNo").textContent = state.exam ? ("第 " + (state.cur+1) + " 题") : ("第 " + q.no + " 题");
   $("qText").textContent = q.q;
   $("qMark").textContent = "";
   renderOptions(q);
@@ -913,7 +913,6 @@ document.addEventListener("keydown", e=>{
     if(q.s==="judge" && !["A","B"].includes(k)) return;
     const has = q.o ? q.o.some(o=>o.k===k) : (k==="A"||k==="B");
     if(has && state.res[state.cur]===undefined) selectOption(q, k);
-    if(has && state.exam && state.res[state.cur]===undefined) selectOption(q, k);
   }
   if(e.key==="Enter"){
     if(q.s==="multi" && !state.exam && state.ans[state.cur]===undefined){ const cur=state.ans[state.cur]||""; if(cur) judge(q); }
@@ -964,7 +963,7 @@ document.addEventListener("keydown", e=>{
         const ang = u*Math.PI*2 + p.ph;
         const rad = H*(0.55 + progress*0.9);
         tx = W*0.5 + Math.cos(ang)*rad;
-        ty = cy + Math.sin(ang)*rad*0.7 - H*0.1*progress;
+        ty = Math.sin(ang)*rad*0.7 - H*0.1*progress;
       }
       /* 平滑逼近 */
       p.px += (tx - p.px)*0.045;
