@@ -721,13 +721,13 @@ function updateBottomBar(){
     $("bbNext").classList.toggle("primary", judged);
   }
 }
-function goPrev(){ if(state.cur>0){ state.cur--; renderQuestion(); } }
+function goPrev(){ if(state.cur>0){ state.cur--; renderQuestion(); scrollToQuestion(); } }
 function goNext(){
-  if(state.exam){ state.cur = Math.min(state.cur+1, state.list.length-1); renderQuestion(); return; }
+  if(state.exam){ state.cur = Math.min(state.cur+1, state.list.length-1); renderQuestion(); scrollToQuestion(); return; }
   const judged = state.res[state.cur] !== undefined;
   if(state.cur < state.list.length-1){
     if(!judged){ toast("请先作答本题"); return; }
-    state.cur++; renderQuestion();
+    state.cur++; renderQuestion(); scrollToQuestion();
   } else {
     if(!judged){ toast("请先作答本题"); return; }
     finishQuiz();
@@ -752,7 +752,7 @@ function renderSheet(){
     else if(state.res[i]===0) c.classList.add("err");
     else if(state.ans[i]!==undefined && state.exam) c.classList.add("cur");
     c.title = "第 "+(i+1)+" 题";
-    c.onclick = ()=>{ state.cur = i; renderQuestion(); window.scrollTo({top:0, behavior:"smooth"}); if(window.innerWidth<900) toast("已跳到第 "+(i+1)+" 题"); };
+    c.onclick = ()=>{ state.cur = i; renderQuestion(); scrollToQuestion(); if(window.innerWidth<900) toast("已跳到第 "+(i+1)+" 题"); };
     grid.appendChild(c);
   });
 }
@@ -761,12 +761,18 @@ function toggleSheet(){
   if(p) p.scrollIntoView({behavior:"smooth", block:"start"});
 }
 function sheetJumpNext(){
-  for(let i=state.cur+1;i<state.list.length;i++){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); window.scrollTo({top:0, behavior:"smooth"}); return; } }
+  for(let i=state.cur+1;i<state.list.length;i++){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); scrollToQuestion(); return; } }
   toast("后面没有未答题");
 }
 function sheetJumpPrev(){
-  for(let i=state.cur-1;i>=0;i--){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); window.scrollTo({top:0, behavior:"smooth"}); return; } }
+  for(let i=state.cur-1;i>=0;i--){ if(state.ans[i]===undefined){ state.cur=i; renderQuestion(); scrollToQuestion(); return; } }
   toast("前面没有未答题");
+}
+/* 滚动到题目卡片顶部，不滚到页面最顶端 */
+function scrollToQuestion(){
+  const qb = document.querySelector(".q-body");
+  if(qb){ qb.scrollIntoView({behavior:"smooth", block:"start"}); }
+  else { window.scrollTo({top:0, behavior:"smooth"}); }
 }
 
 /* ===== 计时 ===== */
