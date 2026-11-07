@@ -695,10 +695,18 @@ function renderNav(q){
       nav.appendChild(next);
     }
   } else {
-    const sub = document.createElement("button");
-    sub.className = "q-btn submit-exam"; sub.textContent = "交卷并查看成绩";
-    sub.onclick = submitExam;
-    nav.appendChild(sub);
+    /* 考试模式：非最后一题显示"下一题"，最后一题显示"交卷并查看成绩" */
+    if(!last){
+      const next = document.createElement("button");
+      next.className = "q-btn primary"; next.textContent = "下一题 →";
+      next.onclick = goNext;
+      nav.appendChild(next);
+    } else {
+      const sub = document.createElement("button");
+      sub.className = "q-btn submit-exam"; sub.textContent = "交卷并查看成绩";
+      sub.onclick = submitExam;
+      nav.appendChild(sub);
+    }
   }
   if(state.cur>0){
     const prev = document.createElement("button");
